@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resilix — Autonomous Adversarial Agent</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #151820;
+      --surface2:  #1c2030;
+      --border:    #252a3a;
+      --accent:    #4f8ef7;
+      --accent2:   #7c5cd8;
+      --high:      #f05a5a;
+      --medium:    #f0a030;
+      --low:       #4ecb82;
+      --text:      #e4e8f0;
+      --muted:     #7a829a;
+      --radius:    10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .logo h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo h1 span { color: var(--accent); }
+    .team-badge {
+      font-size: 12px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    /* ── Layout ──────────────────────────────────────────────── */
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 36px 24px 60px;
+    }
+
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* ── Input panel ─────────────────────────────────────────── */
+    .input-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+    .input-panel textarea {
+      width: 100%;
+      height: 160px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      padding: 12px 14px;
+      resize: vertical;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .input-panel textarea:focus { border-color: var(--accent); }
+    .input-panel textarea::placeholder { color: var(--muted); }
+
+    .run-btn {
+      margin-top: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 11px 26px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    .run-btn:hover { opacity: .88; }
+    .run-btn:active { transform: scale(.97); }
+    .run-btn:disabled { opacity: .45; cursor: not-allowed; }
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Results ─────────────────────────────────────────────── */
+    #results { display: none; }
+
+    /* score + summary row */
+    .summary-row {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 560px) {
+      .summary-row { grid-template-columns: 1fr; }
+    }
+
+    /* radial score card */
+    .score-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 16px;
+      gap: 6px;
+    }
+    .score-card .card-label { font-size: 11px; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
+    .radial-wrap { position: relative; width: 100px; height: 100px; }
+    .radial-wrap svg { transform: rotate(-90deg); }
+    .radial-bg  { fill: none; stroke: var(--border); stroke-width: 9; }
+    .radial-arc { fill: none; stroke-width: 9; stroke-linecap: round; transition: stroke-dasharray .6s ease; }
+    .score-num {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      font-size: 26px; font-weight: 700; line-height: 1;
+    }
+    .score-num small { font-size: 11px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+    .risk-pill {
+      font-size: 12px; font-weight: 600;
+      padding: 3px 12px; border-radius: 20px;
+      margin-top: 4px;
+    }
+
+    /* stats cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .stat-card .stat-val { font-size: 28px; font-weight: 700; }
+    .stat-card .stat-lbl { font-size: 12px; color: var(--muted); }
+    .badge-high   { color: var(--high); }
+    .badge-medium { color: var(--medium); }
+    .badge-low    { color: var(--low); }
+
+    /* vulnerability cards */
+    .vuln-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+
+    .vuln-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .vuln-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      cursor: pointer;
+      user-select: none;
+      transition: background .15s;
+    }
+    .vuln-header:hover { background: var(--surface2); }
+    .sev-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .vuln-name { font-weight: 600; flex: 1; }
+    .sev-badge {
+      font-size: 11px; font-weight: 700;
+      padding: 2px 10px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    .sev-high   { background: rgba(240,90,90,.15);  color: var(--high); }
+    .sev-medium { background: rgba(240,160,48,.15); color: var(--medium); }
+    .sev-low    { background: rgba(78,203,130,.15); color: var(--low); }
+    .chevron {
+      color: var(--muted); font-size: 12px;
+      transition: transform .2s;
+    }
+    .chevron.open { transform: rotate(180deg); }
+
+    .vuln-body { display: none; padding: 0 18px 18px; }
+    .vuln-body.open { display: block; }
+
+    .desc-text { color: var(--muted); font-size: 13.5px; margin-bottom: 14px; }
+
+    .patch-toggle {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      border-radius: 5px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .patch-toggle:hover { background: var(--border); }
+
+    .patch-block {
+      display: none;
+      margin-top: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+    }
+    .patch-block.open { display: block; }
+    .patch-block pre {
+      font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+      font-size: 12.5px;
+      color: #a8d8a8;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* empty / error states */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .alert {
+      background: rgba(240,90,90,.12);
+      border: 1px solid rgba(240,90,90,.35);
+      color: var(--high);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      font-size: 13.5px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <h1><span>Resilix</span> — Autonomous Adversarial Agent</h1>
+  </div>
+  <div class="team-badge">Syntax &amp; Synergy</div>
+</header>
+
+<!-- ── Main ────────────────────────────────────────────────── -->
+<main>
+
+  <!-- Input -->
+  <div class="input-panel">
+    <p class="section-label">Target Input</p>
+    <textarea id="inputArea"
+      placeholder="Paste a code snippet or enter an API endpoint URL to analyse…"></textarea>
+    <button class="run-btn" id="runBtn" onclick="runFuzz()">
+      <div class="spinner" id="spinner"></div>
+      <span id="btnText">Run Resilix Chaos Agent</span>
+    </button>
+  </div>
+
+  <!-- Error banner -->
+  <div class="alert" id="errorBanner" style="display:none;"></div>
+
+  <!-- Results -->
+  <div id="results">
+    <p class="section-label" style="margin-bottom:16px;">Analysis Results</p>
+
+    <!-- Score + summary row -->
+    <div class="summary-row">
+      <!-- Radial score -->
+      <div class="score-card">
+        <span class="card-label">Resilience</span>
+        <div class="radial-wrap">
+          <svg viewBox="0 0 100 100" width="100" height="100">
+            <circle class="radial-bg" cx="50" cy="50" r="42"/>
+            <circle class="radial-arc" id="radialArc" cx="50" cy="50" r="42"
+                    stroke-dasharray="0 264" stroke-dashoffset="0"/>
+          </svg>
+          <div class="score-num">
+            <span id="scoreNum">0</span>
+            <small>/ 100</small>
+          </div>
+        </div>
+        <span class="risk-pill" id="riskPill">—</span>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-val" id="totalCount">0</span>
+          <span class="stat-lbl">Vulnerabilities Found</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-val badge-high" id="highCount">0</span>
+          <span class="stat-lbl">High Severity</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-val badge-medium" id="medCount">0</span>
+          <span class="stat-lbl">Medium Severity</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vulnerability cards -->
+    <p class="section-label" style="margin-bottom:12px;">Vulnerability Breakdown</p>
+    <div class="vuln-list" id="vulnList"></div>
+
+    <!-- Clean bill of health -->
+    <div class="empty-state" id="cleanState" style="display:none;">
+      ✅ No vulnerabilities detected — resilience score is 100 / 100.
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const API = 'http://127.0.0.1:5000/api/fuzz';
+  const CIRC = 2 * Math.PI * 42; // circumference for r=42
+
+  async function runFuzz() {
+    const input = document.getElementById('inputArea').value.trim();
+    if (!input) { showError('Please enter a code snippet or API endpoint.'); return; }
+
+    setLoading(true);
+    clearError();
+    document.getElementById('results').style.display = 'none';
+
+    const isUrl = /^https?:\/\//i.test(input);
+    const body  = isUrl ? { api_endpoint: input } : { code_snippet: input };
+
+    try {
+      const res  = await fetch(API, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) { showError(data.error || `Server error ${res.status}`); return; }
+      renderResults(data);
+    } catch (err) {
+      showError('Could not reach the Resilix backend at ' + API + '. Ensure Flask is running.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderResults(data) {
+    const score  = data.resilience_score ?? 0;
+    const vulns  = data.vulnerabilities  ?? [];
+    const high   = vulns.filter(v => v.severity === 'High').length;
+    const medium = vulns.filter(v => v.severity === 'Medium').length;
+
+    // Radial arc
+    const arc   = document.getElementById('radialArc');
+    const fill  = (score / 100) * CIRC;
+    arc.style.strokeDasharray  = `${fill} ${CIRC}`;
+    arc.style.stroke = score >= 80 ? '#4ecb82' : score >= 50 ? '#f0a030' : '#f05a5a';
+
+    document.getElementById('scoreNum').textContent = score;
+
+    // Risk pill
+    const pill = document.getElementById('riskPill');
+    pill.textContent = data.risk_label || '—';
+    const pillColors = { 'Low Risk': '#4ecb82', 'Moderate Risk': '#f0a030', 'High Risk': '#f05a5a' };
+    pill.style.background = (pillColors[data.risk_label] || '#7a829a') + '22';
+    pill.style.color       = pillColors[data.risk_label] || '#7a829a';
+
+    // Counts
+    document.getElementById('totalCount').textContent = data.vulnerabilities_found ?? 0;
+    document.getElementById('highCount').textContent  = high;
+    document.getElementById('medCount').textContent   = medium;
+
+    // Cards
+    const list = document.getElementById('vulnList');
+    list.innerHTML = '';
+    document.getElementById('cleanState').style.display = vulns.length ? 'none' : 'block';
+
+    vulns.forEach((v, i) => {
+      const sevClass  = 'sev-' + v.severity.toLowerCase();
+      const dotColor  = v.severity === 'High' ? '#f05a5a' : v.severity === 'Medium' ? '#f0a030' : '#4ecb82';
+
+      const card = document.createElement('div');
+      card.className = 'vuln-card';
+      card.innerHTML = `
+        <div class="vuln-header" onclick="toggleCard(${i})">
+          <span class="sev-dot" style="background:${dotColor}"></span>
+          <span class="vuln-name">${esc(v.name)}</span>
+          <span class="sev-badge ${sevClass}">${esc(v.severity)}</span>
+          <span class="chevron" id="chev-${i}">▼</span>
+        </div>
+        <div class="vuln-body" id="body-${i}">
+          <p class="desc-text">${esc(v.description)}</p>
+          <button class="patch-toggle" onclick="togglePatch(${i}, event)">
+            Show Suggested Auto-Patch
+          </button>
+          <div class="patch-block" id="patch-${i}">
+            <pre>${esc(v.patch)}</pre>
+          </div>
+        </div>`;
+      list.appendChild(card);
+    });
+
+    document.getElementById('results').style.display = 'block';
+  }
+
+  function toggleCard(i) {
+    const body  = document.getElementById('body-' + i);
+    const chev  = document.getElementById('chev-' + i);
+    const open  = body.classList.toggle('open');
+    chev.classList.toggle('open', open);
+  }
+
+  function togglePatch(i, e) {
+    e.stopPropagation();
+    const block  = document.getElementById('patch-' + i);
+    const btn    = e.currentTarget;
+    const isOpen = block.classList.toggle('open');
+    btn.textContent = isOpen ? 'Hide Suggested Auto-Patch' : 'Show Suggested Auto-Patch';
+  }
+
+  function setLoading(on) {
+    const btn  = document.getElementById('runBtn');
+    const spin = document.getElementById('spinner');
+    const txt  = document.getElementById('btnText');
+    btn.disabled       = on;
+    spin.style.display = on ? 'block' : 'none';
+    txt.textContent    = on ? 'Analysing…' : 'Run Resilix Chaos Agent';
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorBanner');
+    el.textContent    = '⚠ ' + msg;
+    el.style.display  = 'block';
+  }
+
+  function clearError() {
+    const el = document.getElementById('errorBanner');
+    el.style.display = 'none';
+    el.textContent   = '';
+  }
+
+  function esc(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // Allow Ctrl+Enter to trigger analysis
+  document.getElementById('inputArea').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) runFuzz();
+  });
+</script>
+</body>
+</html>
